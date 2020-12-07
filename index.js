@@ -1,52 +1,49 @@
-const express = require('express');
+const csvWriter = require('csv-write-stream');
 const request = require('request');
 const cheerio = require('cheerio');
 const fs = require('fs');
-
-var title, release, rating;
-var json = {
-    title: "",
-    release: "",
-    rating: "",
-};
+var csvFilename = "nono.csv";
+var json = [];
 
 var url;
 
-const app = express();
-app.listen(5000, function () {
-    // console.log('welcome');
-});
+// If CSV file does not exist, create it and add the headers
 
-app.get('/scrape', (req, res) => {
-    url = 'https://www.imdb.com/title/tt0107290';
+var writer;
+
+
+if (!fs.existsSync(csvFilename))
+    writer = csvWriter({headers: ['URL','Name']});
+else
+    writer = csvWriter({sendHeaders: false});
+
+for (var i = 1; i <= 43; i++) {
+    url = 'https://www.amazon.sa/-/en/Mobile-Phones/b/?ie=UTF8&node=16966419031&page=' + i;
     request(url, function (error, response, html) {
         var $ = cheerio.load(html);
-        //console.log(html);
-        $('.title_wrapper').filter(function () {
-            var data = $(this);
-            title = data.children().first().text();
-            json.title = title.trim();
+        var total = $('#mainResults .s-result-list li').length;
+        $('#mainResults .s-result-list li').each(function (index, element) {
+            var url = $(element).find('.a-link-normal').attr('href');
+            // fs.appendFile('mobiles_ar.txt', url + "\n", function (err) {
+            //     if (err) throw err;
+            //     console.log('Saved!');
+            // });
+
+            // Append some data to CSV the file
+            // console.log(index);
+            writer = csvWriter({sendHeaders: false});
+            if (url != undefined) {
+                writer.pipe(fs.createWriteStream(csvFilename, {flags: 'a'}));
+                writer.write({
+                    URL: url,
+                    Name : 'ahmad'
+                });
+                writer.end();
+            }
         });
-
-        $('#titleYear').filter(function () {
-            var data = $(this);
-            release = data.children().first().text();
-            json.release = release;
-        });
-
-        $('.ratingValue strong').filter(function () {
-            var data = $(this);
-            rating = data.children().first().text();
-            json.rating = rating;
-        });
-
-        //write the json file
-
-        fs.writeFile('result.json',JSON.stringify(json,null,4),function (error){
-            console.log('success');
-        })
-
-        res.send('success');
 
     });
-});
+}
+
+
+
